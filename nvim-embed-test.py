@@ -5,12 +5,16 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
-import sys
 import os
+import sys
+import tempfile
 
 class NVim ():
     def __init__(self):
         self.nvim = neovim.attach('child', argv=['nvim', '--embed'])
+
+        self.inputDoneFile = tempfile.NamedTemporaryFile()
+        self.inputId = 0
 
     def setText(self, text):
         self.buffer()[:] = text.split('\n')
@@ -30,6 +34,10 @@ class NVim ():
     def keyPress(self, key):
         self.nvim.input(key)
 
+        # Sending input can block other requests, so wait until input is complete.
+        self.inputId += 1
+        self.nvim.call('writefile', [self.inputId], self.inputDoneFile.name, async=True)
+
     def mode(self):
         return self.eval('mode()')
 
@@ -44,6 +52,13 @@ class NVim ():
 
     def eval(self, expr):
         return self.nvim.eval(expr)
+
+    def isBlocked(self):
+        with open(self.inputDoneFile.name, 'r') as f:
+            data = f.read().strip()
+            return data != str(self.inputId)
+        return False;
+
 
 class Editor (QTextEdit):
     """ Editor widget driven by FakeVim. """
@@ -60,6 +75,8 @@ class Editor (QTextEdit):
         key = e.text()
         if key:
             self.nvim.keyPress(key)
+            while self.nvim.isBlocked():
+                QApplication.processEvents()
             self.update()
 
     def update(self):
