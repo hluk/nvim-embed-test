@@ -28,7 +28,7 @@ class NVim ():
         return [self.nvim.eval('line("v")'), self.nvim.eval('col("v")')]
 
     def keyPress(self, key):
-        self.nvim.feedkeys(key, 't')
+        self.nvim.input(key)
 
     def mode(self):
         return self.eval('mode()')
