@@ -71,12 +71,16 @@ class Editor (QTextEdit):
 
         self.update()
 
+        self.abort = False
+
     def keyPressEvent(self, e):
         key = e.text()
         if key:
             self.nvim.keyPress(key)
             while self.nvim.isBlocked():
                 QApplication.processEvents()
+                if self.abort:
+                    return
             self.update()
 
     def update(self):
@@ -183,6 +187,7 @@ class MainWindow (QMainWindow):
     def keyPressEvent(self, e):
         if e.key() == Qt.Key_Escape:
             self.close()
+            self.editor.abort = True
 
 def main():
     nvim = NVim()
